@@ -16,6 +16,7 @@
 #include "Writer.h"
 
 // method headers //
+int main_old();
 int main_new();
 void* discretize_line_abalone(void *line);
 void* compress_data(void* bufNum);
@@ -23,9 +24,10 @@ void* compress_buffer(void* buf);
 int switch_backup_buf(int compNum);
 int switch_buffer(int bufNum);
 char* clear_buffer(char* buf);
+void compression_overhead();
 
 
-int INPUTLEVEL = 100;	// number of lines to read into buffer before compression
+int INPUTLEVEL = 40;	// number of lines to read into buffer before compression
 int COMPRESSIONLEVEL = 100;	// amount of compressed lines in query buffer
 
 char* INPUTFILE = "Files/abalone_data.txt";
@@ -47,6 +49,7 @@ char** cBuffer;
 // init other variables
 int bufName;	// inputBuffer = 0, backupBuffer = 1
 int compName;	// compressBuffer = 0, compressBackupBuffer = 1
+int colsAmt;	// number of columns in each line - add to this number later
 
 // various global variables
 int lineNumber = 0;		// number of total lines read in
@@ -117,8 +120,12 @@ int main_new() {
 		pthread_create(&discretize, NULL, discretize_line_abalone, line);
 		pthread_join(discretize, NULL);
 
-//		pthread_create(&compress, NULL, compress_data, &bufName);
-//		pthread_join(compress, NULL);
+//		printf("discretized line");
+
+		pthread_create(&compress, NULL, compress_data, &bufName);
+		pthread_join(compress, NULL);
+
+//		printf("compressed buffer??");
 	}
 
 	printf("\nBUFFER: \n%s\n", buffer);		// TODO - remove later
@@ -205,7 +212,7 @@ void* discretize_line_abalone(void *line) {
 			}
 			else if (iter == 2) {	// diameter
 				if (num < 0.1) {
-					strcat(buffer, "00001");
+					strcat(buffer, "1000");
 				}
 				else if (num < 0.3) {
 					strcat(buffer, "0100");
@@ -334,6 +341,18 @@ void* discretize_line_abalone(void *line) {
 	return NULL;
 }
 
+void compression_overhead() {
+	// get number of columns to compress
+	char *buf = inputBuffer;
+	if (bufName == 1) {
+		buf = backupBuffer;
+	}
+	char *token = strtok(buf, "\n");		// full line
+	char * newtoken = strtok(token, ",");	// line num
+	newtoken = strtok(NULL, ",");			// discretized data
+	colsAmt = strlen(newtoken);
+}
+
 void* compress_data(void* bufNum) {
 	pthread_mutex_lock(countlock);
 	if (lineNumCount != INPUTLEVEL) {
@@ -349,6 +368,8 @@ void* compress_data(void* bufNum) {
 
 	pthread_mutex_lock(writelock);
 
+	compression_overhead();		// get number of columns in buffer
+
 	bufName = switch_buffer((int)bufNum);	// swap buffers
 
 	pthread_mutex_lock(countlock);
@@ -358,12 +379,12 @@ void* compress_data(void* bufNum) {
 	pthread_mutex_unlock(writelock);
 
 	if (bufName == 0) {	// buffer to compress == 1
-		compress_buffer(backupBuffer);
+//		compress_buffer(backupBuffer);		// todo: do later
 
 		backupBuffer = clear_buffer(backupBuffer);
 	}
 	else {	// bufName == 1 -> buffer to compress == 0
-		compress_buffer(inputBuffer);
+//		compress_buffer(inputBuffer);		// todo: do later
 
 		inputBuffer = clear_buffer(inputBuffer);
 	}
@@ -384,10 +405,10 @@ void* compress_buffer(void* buf) {
 //	compressed = readFile(buf);
 
 	// compress buffer
-	if(FORMAT_TYPE == UNSTRIPED)
-		compressUnstriped();//start compression
-	else if(FORMAT_TYPE == STRIPED)
-		compressStriped();
+//	if(FORMAT_TYPE == UNSTRIPED)	// todo: finish later
+//		compressUnstriped();//start compression
+//	else if(FORMAT_TYPE == STRIPED)
+//		compressStriped();
 
 	// store in new buffer
 
@@ -408,13 +429,13 @@ void* compress_buffer(void* buf) {
 int switch_backup_buf(int compNum) {
 	// compressBuffer = 0, compressBackupBuffer = 1
 	if (compNum == 0) {
-//			compressBuffer = compressBackupBuffer;
-			compNum = 1;
-		}
-		else {	// compNum == 1
-//			compressBuffer = inputBuffer;
-			compNum = 0;
-		}
+//		compressBuffer = compressBackupBuffer;
+		compNum = 1;
+	}
+	else {	// compNum == 1
+//		compressBuffer = inputBuffer;
+		compNum = 0;
+	}
 
 		return compNum;
 }
