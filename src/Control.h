@@ -7,7 +7,7 @@
 
 //DEFINE HERE***************************************
 #define FORMAT_TYPE UNSTRIPED						//STRIPED or UNSTRIPED
-#define RUN_FORMAT 1								//do you want to run the reformatter (Writer.c)
+#define RUN_FORMAT 0								//do you want to run the reformatter (Writer.c)
 #define BLOCK_SIZE 16								//kB blocks (recommended: 32)
 #define NUM_THREADS 1 								//define number of threads to use for compression (1,2,3,4)
 #define BITMAP_FILE "Files/abalone_data_bitmap.txt"	//the bitmap file to be compressed

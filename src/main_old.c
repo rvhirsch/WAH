@@ -9,7 +9,7 @@
 #include "Query.h"
 #include "Writer.h"
 
-int main_old();
+
 
 
 /*
