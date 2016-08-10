@@ -20,7 +20,6 @@ int main_old();
 int main_new();
 void* discretize_line_abalone(void *line);
 void* compress_data(void* bufNum);
-void* compress_buffer(void* buf);
 int switch_backup_buf(int compNum);
 int switch_buffer(int bufNum);
 char* clear_buffer(char* buf);
@@ -122,14 +121,13 @@ int main_new() {
 		pthread_create(&discretize, NULL, discretize_line_abalone, line);
 		pthread_join(discretize, NULL);
 
-//		printf("Discretized -> compress now?\n");
-
+		// compress buffer if filled
 		pthread_create(&compress, NULL, compress_data, &bufName);
 		pthread_join(compress, NULL);
 	}
 
-	printf("\nBUFFER: \n%s\n", buffer);		// TODO - remove later
-	printf("\nBACKUP BUFFER: \n%s\n", backupBuffer);	// TODO - remove later
+//	printf("\nBUFFER: \n%s\n", buffer);		// TODO - delete later
+//	printf("\nBACKUP BUFFER: \n%s\n", backupBuffer);	// TODO - delete later
 
 	// destroy locks
 	pthread_mutex_destroy(writelock);
@@ -375,7 +373,7 @@ void* compress_data(void* bufNum) {
 	pthread_mutex_unlock(countlock);
 
 	char *filename = "Files/abalone.txt";
-	FILE *file = fopen(filename, "r+");
+	FILE *file = fopen(filename, "w");
 
 	if (bufName == 1) {	// buffer to compress == 1
 		// put backup buffer in file
@@ -384,17 +382,18 @@ void* compress_data(void* bufNum) {
 			printf("ERROR??\n");
 			exit(7);
 		}
-
-		printf("CURRENT FILE TO COMPRESS:\n");	// todo: delete later
-		char c = fgetc(file);
-		while (c != EOF) {
-			printf("%c", c);
-			c = fgetc(file);
-		}
-		printf("EOF\n");
-
 		fclose(file);
 
+//		fopen(filename, "r");
+//		printf("CURRENT FILE TO COMPRESS: %d\n", bufName);	// todo: delete later
+//		char c = fgetc(file);
+//		while (c != EOF) {
+//			printf("%c", c);
+//			c = fgetc(file);
+//		}
+//		fclose(file);
+
+		printf("Compressing input buffer\n");
 		run_compression(filename);	// compress file
 
 		backupBuffer = clear_buffer(backupBuffer);	// null out buffer
@@ -404,18 +403,20 @@ void* compress_data(void* bufNum) {
 		int result = fputs(inputBuffer, file);
 		if (result < 0) {
 			printf("ERROR??\n");
+			exit(7);
 		}
-
-		printf("CURRENT FILE TO COMPRESS:\n");	// todo: delete later
-		char c = fgetc(file);
-		while (c != EOF) {
-			printf("%c", c);
-			c = fgetc(file);
-		}
-		printf("EOF\n");
-
 		fclose(file);
 
+//		fopen(filename, "r");
+//		printf("CURRENT FILE TO COMPRESS: %d\n", bufName);	// todo: delete later
+//		char c = fgetc(file);
+//		while (c != EOF) {
+//			printf("%c", c);
+//			c = fgetc(file);
+//		}
+//		fclose(file);
+
+		printf("Compressing backup buffer\n");
 		run_compression(filename);	// compress file
 
 		inputBuffer = clear_buffer(inputBuffer);	// null out buffer
@@ -434,17 +435,17 @@ int run_compression(char *file) {
 	unsigned long total;//total amount of time compression ran
 	char *folder;
 
-	// setup for compression
+	// set up for compression
 	setbuf(stdout,NULL);
 
 	if (RUN_FORMAT){
 		char *folder;
 		if(FORMAT_TYPE == UNSTRIPED)
-			folder = toUnstriped();
+			folder = toUnstriped(file);
 		else if(FORMAT_TYPE == STRIPED)
-			folder = toStriped();
+			folder = toStriped(file);
 		printf("Reformatted file extension\t%s\n",folder);
-		return 2;
+		return 1;
 	}
 
 	char newFile[BUFF_SIZE];//will hold where the reformatted files are
@@ -455,14 +456,14 @@ int run_compression(char *file) {
 	else if(FORMAT_TYPE==STRIPED){
 		snprintf(buff,BUFF_SIZE,"STRIPED_%dkB_%d_",BLOCK_SIZE,NUM_THREADS);
 	}
-	snprintf(newFile,BUFF_SIZE,"%s",getDir(BITMAP_FILE,buff));
+	snprintf(newFile,BUFF_SIZE,"%s",getDir(file,buff));
 
 	// actually do the compression here
 	if (RUN_COMPRESSION) {
 		char *form;
 		if(FORMAT_TYPE==UNSTRIPED) form = "UNSTRIPED";
 		else if(FORMAT_TYPE==STRIPED) form = "STRIPED";
-		printf("Start compression of\t\t\t%s\t %dkB\t%d threads\t%s\n",BITMAP_FILE,BLOCK_SIZE,NUM_THREADS,form);
+		printf("Start compression of\t\t%s\t %dkB\t%d threads\t%s\n",file,BLOCK_SIZE,NUM_THREADS,form);
 		start = clock();
 		folder = readFile(file);
 		end = clock();
@@ -476,42 +477,6 @@ int run_compression(char *file) {
 	}
 
 	return 0;
-}
-
-/*
- * CURRENTLY UNUSED - TODO: DELETE LATER??
- */
-void* compress_buffer(void* buf) {
-//	char* compressed;
-	int count = 0;
-
-//	runOverhead();		// todo: maybe necessary later??
-
-	printf("Start Compression\n");
-	double start = clock();	// start timer
-
-//	compressed = readFile(buf);
-
-	// compress buffer
-//	if(FORMAT_TYPE == UNSTRIPED)	// todo: finish later
-//		compressUnstriped();//start compression
-//	else if(FORMAT_TYPE == STRIPED)
-//		compressStriped();
-
-	// store in new buffer
-
-	// if new buffer full, switch with old buffer
-	if (count == COMPRESSIONLEVEL) {
-		compName = switch_backup_buf(compName);
-	}
-
-	// move old buffer to disc
-
-	double end = clock();	// end timer
-	double time = end-start;
-	printf("End Compression: time = %f\n\n", time);
-
-	return NULL;
 }
 
 int switch_backup_buf(int compNum) {

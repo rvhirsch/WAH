@@ -10,8 +10,6 @@
 #include "Writer.h"
 
 
-
-
 /*
  * Runs formatter/compressor/query engines as set in Control.h
  */
@@ -21,9 +19,9 @@ int main_old() {
 	if(RUN_FORMAT){
 		char *folder;
 		if(FORMAT_TYPE == UNSTRIPED)
-			folder = toUnstriped();
+			folder = toUnstriped(BITMAP_FILE);
 		else if(FORMAT_TYPE == STRIPED)
-			folder = toStriped();
+			folder = toStriped(BITMAP_FILE);
 		printf("Reformatted file extension\t%s\n",folder);
 		return 1;
 	}

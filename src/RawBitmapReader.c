@@ -71,7 +71,7 @@ char *readFile(char file[]){
 
 	threads = (pthread_t *) malloc(sizeof(pthread_t) * NUM_THREADS);//allocate each thread pointer
 
-	printf("Start threaded compression\n");
+	printf("\tStart threaded compression\n");
 	time_t start = clock();
 
 	if(FORMAT_TYPE == UNSTRIPED)
@@ -82,8 +82,8 @@ char *readFile(char file[]){
 
 	time_t end = clock();
 	unsigned long total = (unsigned long) (end-start);
-	printf("End threaded compression\n");
-	printf("Compression time: %lu\n",total);
+	printf("\tEnd threaded compression\n");
+	printf("\tCompression time: %lu\n",total);
 
 	return compressed_folder;
 }
@@ -436,10 +436,10 @@ void *compressNext(void *param){
 	int n = -1;//hasn't been assigned a column yet
 	int *id = (int *) param;
 	pthread_mutex_lock(&mut);//lock everything
-	n=(next++);//find out which column we need to compress (and increment for the next thread to compress)
+	n = (next++);//find out which column we need to compress (and increment for the next thread to compress)
 	pthread_mutex_unlock(&mut);//unlock it
 
-	if(n<numCols){//if there's still another column to compress
+	if(n < numCols){//if there's still another column to compress
 		compressColumn(n,*id);//go for it
 	}
 	return NULL;

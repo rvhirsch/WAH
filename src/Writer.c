@@ -18,8 +18,8 @@ int iterations;
 /*
  * Takes the BITMAP_FILE and reformats to striped file folder
  */
-char *toStriped(){
-	char *cols = toUnstriped();//get the file extension of the unstriped files
+char *toStriped(char * file){
+	char *cols = toUnstriped(file);//get the file extension of the unstriped files
 	int numWords = ((BLOCK_SIZE * 1000)/NUM_THREADS)/sizeof(word_32);//this is the number of words to load per thread, per block
 	word_32 buffer[numWords];
 	int i;
@@ -27,7 +27,7 @@ char *toStriped(){
 	int file_counter = -1;
 	char type[BUFF_SIZE];
 	snprintf(type,BUFF_SIZE,"STRIPED_%dkB_%d_",BLOCK_SIZE,NUM_THREADS);
-	char *col_folder = getDir(BITMAP_FILE,type);//this is the file extension for the column data files
+	char *col_folder = getDir(file,type);//this is the file extension for the column data files
 	strcat(col_folder,"/\0");
 	mkdir(col_folder,S_IRWXU);//make that directory
 
@@ -84,8 +84,8 @@ char *toStriped(){
 /*
  * Takes the BITMAP_FILE and reformats to unstriped file folder
  */
-char *toUnstriped(){
-	FILE *fp = fopen(BITMAP_FILE, "r");//try to open the original bitmap
+char *toUnstriped(char * file){
+	FILE *fp = fopen(file, "r");//try to open the original bitmap
 		if(fp == NULL){
 			fprintf(stderr,"Can't open bitmap file for unstriped reformatting\n");
 			return NULL;
@@ -99,7 +99,7 @@ char *toUnstriped(){
 			while((c=getc(fp))!='\n') numCols++;//just go through the first row to see how many columns this file has
 
 			fseek(fp,0,SEEK_SET);//go back to the beginning (for actually reading the data now)
-			char *col_folder = getDir(BITMAP_FILE,"UNSTRIPED_");//this is the file extension for the column data files
+			char *col_folder = getDir(file,"UNSTRIPED_");//this is the file extension for the column data files
 			strcat(col_folder,"/\0");
 
 			char *col_path = (char *) malloc(sizeof(char) * BUFF_SIZE);
