@@ -24,8 +24,7 @@ int switch_backup_buf(int compNum);
 int switch_buffer(int bufNum);
 char* clear_buffer(char* buf);
 int run_compression(char * file);
-
-void compression_overhead();
+int get_num_cols();
 
 
 int INPUTLEVEL = 40;	// number of lines to read into buffer before compression
@@ -50,7 +49,6 @@ char** cBuffer;
 // init other variables
 int bufName;	// inputBuffer = 0, backupBuffer = 1
 int compName;	// compressBuffer = 0, compressBackupBuffer = 1
-int colsAmt;	// number of columns in each line - add to this number later
 
 // various global variables
 int lineNumber = 0;		// number of total lines read in
@@ -59,7 +57,7 @@ int iter = 0;			// spot in txt data file
 int lineNumCount = 0;	// number of lines read in [0..INPUTLEVEL]
 
 // init locks
-pthread_mutex_t *writelock, *compresslock, *countlock;
+pthread_mutex_t *writelock, *compresslock, *countlock, *timelock;
 
 int main(int argc, char *argv[]) {
 	if (strcmp(argv[1],"new") == 0) {
@@ -98,10 +96,12 @@ int main_new() {
 	writelock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
 	countlock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
 	compresslock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+	timelock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
 
 	pthread_mutex_init(writelock, NULL);
 	pthread_mutex_init(countlock, NULL);
 	pthread_mutex_init(compresslock, NULL);
+	pthread_mutex_init(timelock, NULL);
 
 	buffer = inputBuffer;	// to start
 	bufName = 0;
@@ -116,18 +116,26 @@ int main_new() {
 	if (fr == NULL)
 		exit(EXIT_FAILURE);
 
+	time_t start, end;
+	unsigned long total;
+
+	pthread_mutex_lock(timelock);
+	start = clock();
 	// read file line by line
 	while ((read = getline(&line, &len, fr)) != -1) {
 		pthread_create(&discretize, NULL, discretize_line_abalone, line);
-		pthread_join(discretize, NULL);
 
 		// compress buffer if filled
 		pthread_create(&compress, NULL, compress_data, &bufName);
+
+		pthread_join(discretize, NULL);
 		pthread_join(compress, NULL);
 	}
+	end = clock();
+	pthread_mutex_unlock(timelock);
 
-//	printf("\nBUFFER: \n%s\n", buffer);		// TODO - delete later
-//	printf("\nBACKUP BUFFER: \n%s\n", backupBuffer);	// TODO - delete later
+	total = end - start;
+	printf("\nCOMPRESSION TIME FOR FULL FILE: %lu\n", total);
 
 	// destroy locks
 	pthread_mutex_destroy(writelock);
@@ -339,7 +347,7 @@ void* discretize_line_abalone(void *line) {
 	return NULL;
 }
 
-void compression_overhead() {
+int get_num_cols() {
 	// get number of columns to compress
 	char *buf = inputBuffer;
 	if (bufName == 1) {
@@ -348,7 +356,9 @@ void compression_overhead() {
 	char *token = strtok(buf, "\n");		// full line
 	char * newtoken = strtok(token, ",");	// line num
 	newtoken = strtok(NULL, ",");			// discretized data
-	colsAmt = strlen(newtoken);
+	int colsAmt = strlen(newtoken);
+
+	return colsAmt;
 }
 
 void* compress_data(void* bufNum) {
@@ -470,6 +480,9 @@ int run_compression(char *file) {
 		total = end-start;
 		printf("End compression\n");
 		printf("Total compression time:\t%lu\n\n",(unsigned long)total);
+
+		fclose(fopen(file, "w"));	// clear contents of file
+
 		return 1;
 	}
 	else{
@@ -479,6 +492,9 @@ int run_compression(char *file) {
 	return 0;
 }
 
+/*
+ * Currently not used
+ */
 int switch_backup_buf(int compNum) {
 	// compressBuffer = 0, compressBackupBuffer = 1
 	if (compNum == 0) {
